@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Pin } from '../../types'
 
 interface PinCardProps {
@@ -5,16 +6,27 @@ interface PinCardProps {
 }
 
 function PinCard({ pin }: PinCardProps) {
+  const [isHovered, setIsHovered] = useState(false)
+
   return (
     <div style={styles.card}>
-      <div style={styles.imageWrapper}>
+      <div
+        style={styles.imageWrapper}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <img
           src={pin.imageUrl}
           alt={pin.title}
           loading="lazy"
           style={styles.image}
         />
-        <div style={styles.overlay}>
+        <div
+          style={{
+            ...styles.overlay,
+            opacity: isHovered ? 1 : 0,
+          }}
+        >
           <button style={styles.saveButton}>Guardar</button>
         </div>
       </div>
@@ -52,7 +64,6 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: '16px',
-    opacity: 0,
     transition: 'opacity 0.2s ease',
     display: 'flex',
     alignItems: 'flex-start',

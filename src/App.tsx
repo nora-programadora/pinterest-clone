@@ -122,6 +122,7 @@
 
 import PinCard from './features/pins/PinCard'
 import type { Pin } from './types'
+import PinFeed from './features/pins/PinFeed'
 
 const mockPin: Pin = {
   id: '1',
@@ -135,8 +136,8 @@ const mockPin: Pin = {
 
 function App() {
   return (
-    <div style={{ padding: '20px', maxWidth: '300px' }}>
-      <PinCard pin={mockPin} />
+    <div>
+      <PinFeed />
     </div>
   )
 }

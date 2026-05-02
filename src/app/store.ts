@@ -1,8 +1,9 @@
 import { configureStore } from '@reduxjs/toolkit'
+import pinsReducer from '../features/pins/pinsSlice'
 
 export const store = configureStore({
   reducer: {
-    // aquí irás agregando los slices
+    pins: pinsReducer,
   },
 })
 

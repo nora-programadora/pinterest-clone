@@ -70,7 +70,12 @@ const pinsSlice = createSlice({
       })
       .addCase(fetchPins.fulfilled, (state, action: PayloadAction<Pin[]>) => {
         state.status = 'succeeded'
-        state.items.push(...action.payload)   // acumula — no reemplaza
+        
+        // Filtra duplicados antes de agregar al estado
+        const existingIds = new Set(state.items.map((pin) => pin.id))
+        const newPins = action.payload.filter((pin) => !existingIds.has(pin.id))
+        
+        state.items.push(...newPins)
         state.page += 1
         state.hasMore = action.payload.length > 0
       })
