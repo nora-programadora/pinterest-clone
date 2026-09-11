@@ -1,73 +1,85 @@
-# React + TypeScript + Vite
+# Pinterest Clone
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Pinterest-style app: a masonry feed of photos (from the Unsplash API) that a logged-in user can save into personal boards. React/Redux frontend, FastAPI backend.
 
-Currently, two official plugins are available:
+## Current state
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Working end to end:
 
-## React Compiler
+- Infinite-scroll masonry feed of Unsplash photos.
+- Email/password register & login (JWT, persisted in `localStorage`).
+- Saving a pin into a board from the pin card, including creating a new board on the fly.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Not implemented yet:
 
-## Expanding the ESLint configuration
+- No page to browse your boards or see a board's contents — the backend supports listing/renaming/deleting boards and removing a pin from a board, but there's no UI for any of it.
+- No routing (`react-router-dom` is installed but unused) — the app is a single view (login or feed).
+- No pin detail view — pins aren't clickable.
+- No image upload — pins are Unsplash photos only, users can't add their own images.
+- No user profile (username/avatar) — only email/password exist.
+- No tests, no CI, on either side.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Project structure
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- `/` — Vite + React + TypeScript frontend (Redux Toolkit for state).
+- `backend/` — FastAPI + SQLAlchemy + SQLite API (auth + boards).
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+The frontend talks to the Unsplash API directly for the pin feed, and to the local FastAPI backend for auth and boards. Both need to be running.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Setup
+
+### 1. Frontend
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Create a `.env` in the repo root:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+VITE_UNSPLASH_ACCESS_KEY=your-unsplash-access-key
+VITE_API_URL=http://localhost:8000
+```
+
+Get an Unsplash access key from https://unsplash.com/developers (create an app, use its "Access Key" as the Client-ID).
+
+```bash
+npm run dev
+```
+
+The app runs at http://localhost:5173.
+
+### 2. Backend
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Create `backend/.env` (see `backend/.env.example`):
+
+```
+DATABASE_URL=sqlite:///./pinterest_clone.db
+JWT_SECRET_KEY=some-long-random-string
+```
+
+```bash
+uvicorn main:app --reload
+```
+
+The API runs at http://localhost:8000 and creates the SQLite database file on first run. CORS is preconfigured for `http://localhost:5173`.
+
+## Commands
+
+Frontend (repo root):
+
+- `npm run dev` — start the Vite dev server
+- `npm run build` — type-check (`tsc -b`) then production build
+- `npm run lint` — run ESLint
+- `npm run preview` — preview the production build locally
+
+Backend (`backend/`, with the venv active):
+
+- `uvicorn main:app --reload` — start the API with auto-reload

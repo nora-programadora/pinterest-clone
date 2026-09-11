@@ -64,6 +64,31 @@ export const savePinToBoard = createAsyncThunk<
   }
 })
 
+export const deleteBoard = createAsyncThunk<number, number, { rejectValue: string }>(
+  'boards/deleteBoard',
+  async (boardId, { rejectWithValue }) => {
+    try {
+      await apiClient.delete(`/boards/${boardId}`)
+      return boardId
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error))
+    }
+  }
+)
+
+export const removePinFromBoard = createAsyncThunk<
+  { boardId: number; pinId: number },
+  { boardId: number; pinId: number },
+  { rejectValue: string }
+>('boards/removePinFromBoard', async ({ boardId, pinId }, { rejectWithValue }) => {
+  try {
+    await apiClient.delete(`/boards/${boardId}/pins/${pinId}`)
+    return { boardId, pinId }
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error))
+  }
+})
+
 const boardsSlice = createSlice({
   name: 'boards',
   initialState,
@@ -89,6 +114,15 @@ const boardsSlice = createSlice({
         const board = state.items.find((b) => b.id === action.payload.boardId)
         if (board) {
           board.pins.push(action.payload.pin)
+        }
+      })
+      .addCase(deleteBoard.fulfilled, (state, action) => {
+        state.items = state.items.filter((board) => board.id !== action.payload)
+      })
+      .addCase(removePinFromBoard.fulfilled, (state, action) => {
+        const board = state.items.find((b) => b.id === action.payload.boardId)
+        if (board) {
+          board.pins = board.pins.filter((p) => p.id !== action.payload.pinId)
         }
       })
   },
