@@ -9,11 +9,13 @@ Working end to end:
 - Infinite-scroll masonry feed of Unsplash photos.
 - Email/password register & login (JWT, persisted in `localStorage`).
 - Saving a pin into a board from the pin card, including creating a new board on the fly.
+- Routing with `react-router-dom`: feed (`/`), boards list (`/boards`) and board detail (`/boards/:boardId`).
+- Boards page: browse your boards with a preview of their pins, and create new ones.
+- Board detail: see a board's pins, remove a pin from it, and delete the board.
 
 Not implemented yet:
 
-- No page to browse your boards or see a board's contents — the backend supports listing/renaming/deleting boards and removing a pin from a board, but there's no UI for any of it.
-- No routing (`react-router-dom` is installed but unused) — the app is a single view (login or feed).
+- No way to rename or edit a board's description — the backend supports it (`PUT /boards/{board_id}`), but there's no UI or thunk for it.
 - No pin detail view — pins aren't clickable.
 - No image upload — pins are Unsplash photos only, users can't add their own images.
 - No user profile (username/avatar) — only email/password exist.
