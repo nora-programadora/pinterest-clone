@@ -64,6 +64,19 @@ export const savePinToBoard = createAsyncThunk<
   }
 })
 
+export const updateBoard = createAsyncThunk<
+  Board,
+  { boardId: number; name?: string; description?: string },
+  { rejectValue: string }
+>('boards/updateBoard', async ({ boardId, ...changes }, { rejectWithValue }) => {
+  try {
+    const { data } = await apiClient.put<Board>(`/boards/${boardId}`, changes)
+    return data
+  } catch (error) {
+    return rejectWithValue(getErrorMessage(error))
+  }
+})
+
 export const deleteBoard = createAsyncThunk<number, number, { rejectValue: string }>(
   'boards/deleteBoard',
   async (boardId, { rejectWithValue }) => {
@@ -114,6 +127,12 @@ const boardsSlice = createSlice({
         const board = state.items.find((b) => b.id === action.payload.boardId)
         if (board) {
           board.pins.push(action.payload.pin)
+        }
+      })
+      .addCase(updateBoard.fulfilled, (state, action) => {
+        const index = state.items.findIndex((b) => b.id === action.payload.id)
+        if (index !== -1) {
+          state.items[index] = action.payload
         }
       })
       .addCase(deleteBoard.fulfilled, (state, action) => {

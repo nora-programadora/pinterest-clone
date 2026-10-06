@@ -8,7 +8,7 @@ export interface Pin {
   height: number
 }
 
-// Un pin ya guardado dentro de un board — mismo shape que PinOut del backend
+// Un pin ya guardado dentro de un board — mismo shape que devuelve la API (netlify/functions/api.ts)
 export interface BoardPin {
   id: number
   board_id: number
@@ -19,7 +19,7 @@ export interface BoardPin {
   created_at: string
 }
 
-// Mismo shape que BoardOut del backend
+// Mismo shape que devuelve la API (netlify/functions/api.ts)
 export interface Board {
   id: number
   name: string

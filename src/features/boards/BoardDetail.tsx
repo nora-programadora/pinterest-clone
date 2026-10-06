@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../../shared/hooks/redux'
-import { fetchBoards, deleteBoard, removePinFromBoard } from './boardsSlice'
+import { fetchBoards, updateBoard, deleteBoard, removePinFromBoard } from './boardsSlice'
 
 function BoardDetail() {
   const { boardId } = useParams()
@@ -13,14 +14,43 @@ function BoardDetail() {
     state.boards.items.find((b) => b.id === Number(boardId))
   )
 
-  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [isSavingName, setIsSavingName] = useState(false)
 
   useEffect(() => {
     if (status === 'idle') {
       dispatch(fetchBoards())
     }
   }, [dispatch, status])
+
+  const startRename = () => {
+    if (!board) return
+    setNewName(board.name)
+    setActionError(null)
+    setIsRenaming(true)
+  }
+
+  const handleRename = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!board) return
+    const name = newName.trim()
+    if (!name || name === board.name) {
+      setIsRenaming(false)
+      return
+    }
+
+    setIsSavingName(true)
+    const result = await dispatch(updateBoard({ boardId: board.id, name }))
+    setIsSavingName(false)
+    if (updateBoard.fulfilled.match(result)) {
+      setIsRenaming(false)
+    } else {
+      setActionError(result.payload ?? 'No se pudo renombrar el tablero')
+    }
+  }
 
   const handleDeleteBoard = async () => {
     if (!board) return
@@ -32,13 +62,17 @@ function BoardDetail() {
     if (deleteBoard.fulfilled.match(result)) {
       navigate('/boards')
     } else {
-      setDeleteError(result.payload ?? 'No se pudo eliminar el tablero')
+      setActionError(result.payload ?? 'No se pudo eliminar el tablero')
     }
   }
 
-  const handleRemovePin = (pinId: number) => {
+  const handleRemovePin = async (pinId: number) => {
     if (!board) return
-    dispatch(removePinFromBoard({ boardId: board.id, pinId }))
+    setActionError(null)
+    const result = await dispatch(removePinFromBoard({ boardId: board.id, pinId }))
+    if (removePinFromBoard.rejected.match(result)) {
+      setActionError(result.payload ?? 'No se pudo quitar el pin')
+    }
   }
 
   if (status === 'loading' && !board) {
@@ -66,17 +100,49 @@ function BoardDetail() {
 
       <div style={styles.headerRow}>
         <div>
-          <h1 style={styles.title}>{board.name}</h1>
+          {isRenaming ? (
+            <form style={styles.renameForm} onSubmit={handleRename}>
+              <input
+                style={styles.renameInput}
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Escape' && setIsRenaming(false)}
+                disabled={isSavingName}
+                autoFocus
+              />
+              <button style={styles.saveBtn} type="submit" disabled={isSavingName}>
+                {isSavingName ? 'Guardando...' : 'Guardar'}
+              </button>
+              <button
+                style={styles.secondaryBtn}
+                type="button"
+                onClick={() => setIsRenaming(false)}
+                disabled={isSavingName}
+              >
+                Cancelar
+              </button>
+            </form>
+          ) : (
+            <h1 style={styles.title}>{board.name}</h1>
+          )}
           <p style={styles.pinCount}>
             {board.pins.length} pin{board.pins.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button style={styles.deleteBtn} onClick={handleDeleteBoard} disabled={isDeleting}>
-          {isDeleting ? 'Eliminando...' : 'Eliminar tablero'}
-        </button>
+        <div style={styles.actions}>
+          {!isRenaming && (
+            <button style={styles.secondaryBtn} onClick={startRename}>
+              Renombrar
+            </button>
+          )}
+          <button style={styles.deleteBtn} onClick={handleDeleteBoard} disabled={isDeleting}>
+            {isDeleting ? 'Eliminando...' : 'Eliminar tablero'}
+          </button>
+        </div>
       </div>
 
-      {deleteError !== null && <p style={styles.errorText}>{deleteError}</p>}
+      {actionError !== null && <p style={styles.errorText}>{actionError}</p>}
 
       {board.pins.length === 0 ? (
         <p style={styles.hint}>Este tablero todavía no tiene pins guardados.</p>
@@ -123,6 +189,42 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     color: '#767676',
     margin: 0,
+  },
+  actions: {
+    display: 'flex',
+    gap: '8px',
+  },
+  renameForm: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  renameInput: {
+    padding: '8px 12px',
+    borderRadius: '8px',
+    border: '1px solid #ddd',
+    fontSize: '18px',
+    fontWeight: '600',
+  },
+  saveBtn: {
+    backgroundColor: '#E60023',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '24px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  secondaryBtn: {
+    background: 'none',
+    border: '1px solid #ddd',
+    color: '#111',
+    borderRadius: '24px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
   deleteBtn: {
     background: 'none',

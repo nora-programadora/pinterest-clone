@@ -31,3 +31,6 @@ backend/pinterest_clone.db
 *.njsproj
 *.sln
 *.sw?
+
+# Netlify
+.netlify

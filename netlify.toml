@@ -1,0 +1,15 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[dev]
+  # `netlify dev` levanta Vite y sirve las funciones en /api en el mismo puerto
+  command = "npm run dev"
+  targetPort = 5173
+
+# SPA: cualquier ruta del frontend (/boards/3, etc.) sirve index.html.
+# Las funciones con `config.path` (/api/*) tienen prioridad sobre esta regla.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
