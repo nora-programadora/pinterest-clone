@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@netlify/neon": "^0.1.2",
+    "@netlify/database": "^2.0.1",
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.15.2",
     "bcryptjs": "^3.0.3",

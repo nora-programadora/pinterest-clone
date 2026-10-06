@@ -34,3 +34,4 @@ backend/pinterest_clone.db
 
 # Netlify
 .netlify
+deno.lock

@@ -2,10 +2,9 @@
   command = "npm run build"
   publish = "dist"
 
-[dev]
-  # `netlify dev` levanta Vite y sirve las funciones en /api en el mismo puerto
-  command = "npm run dev"
-  targetPort = 5173
+# `netlify dev` detecta Vite solo. No agregar `command`/`targetPort` en [dev]:
+# eso desactiva la detección y la regla SPA de abajo termina reescribiendo los
+# módulos de Vite (/src/*.tsx) a index.html.
 
 # SPA: cualquier ruta del frontend (/boards/3, etc.) sirve index.html.
 # Las funciones con `config.path` (/api/*) tienen prioridad sobre esta regla.

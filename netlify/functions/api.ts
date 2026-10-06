@@ -1,12 +1,12 @@
 import type { Config } from '@netlify/functions'
-import { neon } from '@netlify/neon'
+import { getDatabase } from '@netlify/database'
 import bcrypt from 'bcryptjs'
 import { SignJWT, jwtVerify } from 'jose'
-import { SCHEMA_STATEMENTS } from '../db/schema'
 
 // API de la app (auth, boards, pins) como una sola Netlify Function.
 // Errores con shape { detail } y respuestas con los shapes de src/types,
 // que es lo que espera el frontend.
+// El schema de la base vive en netlify/database/migrations/ (Netlify las aplica en cada deploy).
 
 const ACCESS_TOKEN_EXPIRE = '7d'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -19,24 +19,17 @@ class HttpError extends Error {
   }
 }
 
-type Sql = ReturnType<typeof neon>
+type Sql = ReturnType<typeof getDatabase>['sql']
+
+interface IdRow {
+  id: number
+}
 
 let sqlClient: Sql | null = null
-let schemaReady: Promise<void> | null = null
 
-async function getSql(): Promise<Sql> {
-  sqlClient ??= neon()
-  const sql = sqlClient
-  schemaReady ??= (async () => {
-    for (const statement of SCHEMA_STATEMENTS) {
-      await sql.query(statement)
-    }
-  })().catch((error) => {
-    schemaReady = null
-    throw error
-  })
-  await schemaReady
-  return sql
+function getSql(): Sql {
+  sqlClient ??= getDatabase().sql
+  return sqlClient
 }
 
 function getSecret(): Uint8Array {
@@ -112,14 +105,14 @@ async function getCurrentUserId(req: Request, sql: Sql): Promise<number> {
   }
   if (!Number.isInteger(userId)) throw credentialsError
 
-  const rows = await sql`SELECT id FROM users WHERE id = ${userId}`
+  const rows = await sql<IdRow>`SELECT id FROM users WHERE id = ${userId}`
   if (rows.length === 0) throw credentialsError
   return userId
 }
 
 // 404 si el board no existe, 403 si es de otro usuario
 async function getOwnedBoardId(sql: Sql, boardId: number, userId: number): Promise<number> {
-  const rows = await sql`SELECT owner_id FROM boards WHERE id = ${boardId}`
+  const rows = await sql<{ owner_id: number }>`SELECT owner_id FROM boards WHERE id = ${boardId}`
   if (rows.length === 0) throw new HttpError(404, 'Board not found')
   if (rows[0].owner_id !== userId) throw new HttpError(403, 'Not your board')
   return boardId
@@ -156,16 +149,18 @@ async function route(req: Request): Promise<Response> {
     return json({ status: 'ok' })
   }
 
-  const sql = await getSql()
+  const sql = getSql()
 
   // --- auth ---
   if (method === 'POST' && path === '/auth/register') {
     const { email, password } = readCredentials(await readJson(req))
-    const existing = await sql`SELECT id FROM users WHERE email = ${email}`
+    const existing = await sql<IdRow>`SELECT id FROM users WHERE email = ${email}`
     if (existing.length > 0) throw new HttpError(400, 'Email already registered')
 
+    // Falla antes del INSERT si falta JWT_SECRET_KEY, para no dejar un usuario creado sin token
+    getSecret()
     const hashed = await bcrypt.hash(password, 10)
-    const [user] = await sql`
+    const [user] = await sql<IdRow>`
       INSERT INTO users (email, hashed_password) VALUES (${email}, ${hashed}) RETURNING id
     `
     return json({ access_token: await createAccessToken(user.id), token_type: 'bearer' }, 201)
@@ -173,7 +168,7 @@ async function route(req: Request): Promise<Response> {
 
   if (method === 'POST' && path === '/auth/login') {
     const { email, password } = readCredentials(await readJson(req))
-    const [user] = await sql`SELECT id, hashed_password FROM users WHERE email = ${email}`
+    const [user] = await sql<IdRow & { hashed_password: string }>`SELECT id, hashed_password FROM users WHERE email = ${email}`
     if (!user || !(await bcrypt.compare(password, user.hashed_password))) {
       throw new HttpError(401, 'Invalid email or password')
     }
@@ -247,7 +242,7 @@ async function route(req: Request): Promise<Response> {
   if (pinMatch && method === 'DELETE') {
     const userId = await getCurrentUserId(req, sql)
     const boardId = await getOwnedBoardId(sql, Number(pinMatch[1]), userId)
-    const deleted = await sql`
+    const deleted = await sql<IdRow>`
       DELETE FROM pins WHERE id = ${Number(pinMatch[2])} AND board_id = ${boardId} RETURNING id
     `
     if (deleted.length === 0) throw new HttpError(404, 'Pin not found')

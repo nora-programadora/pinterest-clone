@@ -4,11 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project layout
 
-A Vite/React frontend at the repo root plus a TypeScript API that runs as a single Netlify Function (`netlify/functions/api.ts`), backed by Postgres via Netlify DB (Neon). Everything deploys to Netlify. Auth and boards hit the API at `/api` (same origin); the pin feed hits Unsplash directly from the browser.
+A Vite/React frontend at the repo root plus a TypeScript API that runs as a single Netlify Function (`netlify/functions/api.ts`), backed by Postgres via Netlify Database (`@netlify/database`). Everything deploys to Netlify. Auth and boards hit the API at `/api` (same origin); the pin feed hits Unsplash directly from the browser.
 
 ## Commands
 
-- `npx netlify dev` — run the app and the API together at http://localhost:8888. Requires `npx netlify link` once (`@netlify/neon` needs a linked site). Use 8888, not Vite's 5173 — `/api` only exists behind Netlify Dev.
+- `npx netlify dev` — run the app, the API and a local embedded Postgres together at http://localhost:8888. Requires `npx netlify link` once and an up-to-date Netlify CLI (old CLIs only know the deprecated `@netlify/neon` extension). Use 8888, not Vite's 5173 — `/api` only exists behind Netlify Dev.
+- `npx netlify database migrations apply` — apply pending migrations to the local database (with `netlify dev` running). Locally this is manual; on deploy Netlify applies them automatically.
+- `npx netlify database migrations new --description "..."` — create a new migration file.
+- `npx netlify database status` / `npx netlify database connect` — inspect the local database.
 - `npm run dev` — Vite alone (http://localhost:5173), frontend only; API calls will 404 unless `VITE_API_URL` points somewhere.
 - `npm run build` — type-check (`tsc -b`, which includes `netlify/` via `tsconfig.netlify.json`) then production build via Vite
 - `npm run lint` — run ESLint over the project
@@ -24,7 +27,7 @@ Repo root `.env` (not committed), also loaded by `netlify dev`:
 - `JWT_SECRET_KEY` — required by the API to sign/verify tokens; requests that need it 500 if it's missing.
 - `VITE_API_URL` — optional; `apiClient` defaults to `/api`. Only set it to point the frontend at a different API.
 
-`NETLIFY_DATABASE_URL` is injected by Netlify (site env), read automatically by `neon()` from `@netlify/neon`. Local dev uses the same database as the deployed site.
+The database connection needs no env var: `getDatabase()` from `@netlify/database` resolves it per environment (local embedded Postgres under `netlify dev`, the production DB on production deploys, an isolated branch on deploy previews).
 
 In production, `JWT_SECRET_KEY` and `VITE_UNSPLASH_ACCESS_KEY` are set in the Netlify site's environment variables (`VITE_*` are baked in at build time, so changing them requires a redeploy).
 
@@ -66,7 +69,7 @@ Styling throughout is inline `style` objects per component (no CSS modules/style
   - `POST /api/boards/:boardId/pins`, `DELETE /api/boards/:boardId/pins/:pinId` — a "pin" here is a row linking a board to an Unsplash photo; there's no image upload.
   - `getOwnedBoardId` gives 404 for a missing board, 403 for someone else's. Errors are thrown as `HttpError` and turned into `{ detail }` responses; anything else is a logged 500.
   - Input validation is manual (`requireString`/`optionalString`/`readCredentials`), 422 on bad input.
-- `db/schema.ts` — `CREATE TABLE/INDEX IF NOT EXISTS` statements for `users`, `boards`, `pins` (integer `SERIAL` ids, `ON DELETE CASCADE` from users → boards → pins). There's no migration tool: `getSql()` runs these once per function instance (cold start). Schema changes that aren't additive/idempotent need to be handled by hand.
-- DB access uses `neon()` from `@netlify/neon` (Neon's HTTP driver): tagged-template queries, one statement per call, no interactive transactions.
+- `database/migrations/` — SQL migrations (`<timestamp>_<slug>.sql`) defining `users`, `boards`, `pins` (integer `SERIAL` ids, `ON DELETE CASCADE` from users → boards → pins). Netlify applies them on deploy. Never edit a migration that has already been applied — add a new one. Don't run DDL through `netlify database connect`.
+- DB access is `getDatabase().sql` from `@netlify/database`: a tagged template (waddler) that parameterizes interpolated values; pass a row type as generic (`sql<IdRow>\`...\``). For transactions use `getDatabase().pool`.
 
 No tests, no CI.

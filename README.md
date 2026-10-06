@@ -25,7 +25,7 @@ Not implemented yet:
 
 - `/` — Vite + React + TypeScript frontend (Redux Toolkit for state).
 - `netlify/functions/api.ts` — the API (auth + boards + pins), a single Netlify Function served at `/api/*`.
-- `netlify/db/schema.ts` — Postgres tables, created automatically (idempotently) on the function's first request.
+- `netlify/database/migrations/` — SQL migrations for the Postgres tables. Netlify applies them automatically on each deploy.
 
 The frontend talks to the Unsplash API directly for the pin feed, and to `/api` (same origin) for auth and boards.
 
@@ -33,9 +33,9 @@ The frontend talks to the Unsplash API directly for the pin feed, and to `/api` 
 
 ```bash
 npm install
+npm install -g netlify-cli@latest   # Netlify Database needs a recent CLI
 npx netlify login
 npx netlify link        # connect this folder to your Netlify site
-npx netlify db init     # only if the site doesn't have a database yet
 ```
 
 Create a `.env` in the repo root:
@@ -45,13 +45,19 @@ VITE_UNSPLASH_ACCESS_KEY=your-unsplash-access-key
 JWT_SECRET_KEY=some-long-random-string
 ```
 
-Get an Unsplash access key from https://unsplash.com/developers (create an app, use its "Access Key" as the Client-ID). `NETLIFY_DATABASE_URL` is injected by Netlify, no need to set it.
+Get an Unsplash access key from https://unsplash.com/developers (create an app, use its "Access Key" as the Client-ID).
 
 ```bash
 npx netlify dev
 ```
 
-The app and the API run together at http://localhost:8888 (use that, not Vite's 5173 — `/api` only exists behind Netlify Dev). Note that local development uses the same Netlify DB database as the deployed site.
+The app, the API and a local Postgres run together at http://localhost:8888 (use that, not Vite's 5173 — `/api` only exists behind Netlify Dev). The local database is separate from production.
+
+The first time (and whenever a new migration is added), with `netlify dev` running, apply the migrations to the local database in another terminal:
+
+```bash
+npx netlify database migrations apply
+```
 
 ## Deploy
 
@@ -59,7 +65,8 @@ Import the repo in Netlify — build settings come from `netlify.toml`. Set `JWT
 
 ## Commands
 
-- `npx netlify dev` — run app + API locally
+- `npx netlify dev` — run app + API + local database
+- `npx netlify database migrations apply` — apply migrations to the local database
 - `npm run build` — type-check (`tsc -b`, including `netlify/`) then production build
 - `npm run lint` — run ESLint
 - `npm run preview` — preview the production build (frontend only)
